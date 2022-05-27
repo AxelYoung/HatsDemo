@@ -7,17 +7,16 @@ using UnityEngine.Networking;
 
 public class Player : NetworkBehaviour {
 
-    public float speed;
-    public int jumpForce;
-    public LayerMask groundLayer;
+    [SerializeField] float speed;
+    [SerializeField] int jumpForce;
+    [SerializeField] LayerMask groundLayer;
+    [SerializeField] SpriteRenderer hatSprite;
 
     Rigidbody2D rb;
     Animator anim;
     SpriteRenderer sprite;
 
-    public SpriteRenderer hatSprite;
-
-    public int wearingHatID = -1;
+    [HideInInspector] public int wearingHatID = -1;
 
     public override void OnStartClient() {
         base.OnStartClient();
@@ -46,7 +45,7 @@ public class Player : NetworkBehaviour {
     }
 
     IEnumerator GetPlayerID() {
-        using (UnityWebRequest web = UnityWebRequest.Get("http://54.219.56.114/Server/SetPlayerID.php")) {
+        using (UnityWebRequest web = UnityWebRequest.Get(HatNetworking.serverDir + "NewPlayerID.php")) {
             yield return web.SendWebRequest();
             PlayerPrefs.SetInt("PlayerID", int.Parse(web.downloadHandler.text));
         }
@@ -58,25 +57,25 @@ public class Player : NetworkBehaviour {
 
     public void SetHatSprite() {
         if (wearingHatID != -1) {
-            CMDHatSpriteData(this, Hat.hats[wearingHatID].data);
+            CMDHatSpriteData(this, HatNetworking.hats[wearingHatID].data);
         } else {
             CMDHatSpriteNull(this);
         }
     }
 
     [Command(requiresAuthority = false)]
-    public void CMDHatSpriteData(Player goal, byte[] data) {
+    void CMDHatSpriteData(Player goal, byte[] data) {
         RPCHatSpriteData(goal, data);
     }
 
     [Command(requiresAuthority = false)]
-    public void CMDHatSpriteNull(Player goal) {
+    void CMDHatSpriteNull(Player goal) {
         RPCHatSpriteNull(goal);
     }
 
     [ClientRpc]
     void RPCHatSpriteData(Player goal, byte[] data) {
-        Sprite sprite = Hat.BytesToSprite(data);
+        Sprite sprite = HatNetworking.DataToSprite(data);
         goal.hatSprite.sprite = sprite;
     }
 

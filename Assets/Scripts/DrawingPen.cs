@@ -2,21 +2,17 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class PlayerDrawing : MonoBehaviour {
+public class DrawingPen : MonoBehaviour {
 
-    public Color color;
-
-    HatBoard hatBoard;
-
+    Color color;
+    DrawingBoard hatBoard;
     RectTransform rectTransform;
 
-    // Start is called before the first frame update
     void Start() {
         rectTransform = GetComponent<RectTransform>();
-        hatBoard = GetComponent<HatBoard>();
+        hatBoard = GetComponent<DrawingBoard>();
     }
 
-    // Update is called once per frame
     void Update() {
         if (Input.GetKey(KeyCode.Mouse0)) {
             Vector2Int pos = mouseBoardPosition();
@@ -30,10 +26,6 @@ public class PlayerDrawing : MonoBehaviour {
                 hatBoard.SetPixel(pos.x, pos.y, new Color(0, 0, 0, 0));
             }
         }
-    }
-
-    public void SetColor(Color newColor) {
-        color = newColor;
     }
 
     Vector2Int mouseBoardPosition() {
@@ -52,4 +44,6 @@ public class PlayerDrawing : MonoBehaviour {
 
         return new Vector2Int((int)pixelCoord.x / 32, (int)pixelCoord.y / 32);
     }
+
+    public void SetColor(Color newColor) => color = newColor;
 }

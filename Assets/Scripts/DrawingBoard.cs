@@ -4,21 +4,17 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.IO;
 
-public class HatBoard : MonoBehaviour {
+public class DrawingBoard : MonoBehaviour {
+
+    [SerializeField] int spriteSize;
+    [SerializeField] RawImage hatDisplay;
 
     Texture2D boardTexture;
     RawImage rawImage;
 
-    public int spriteSize;
+    void Awake() => rawImage = GetComponent<RawImage>();
 
-    public RawImage hatDisplay;
-
-    void Awake() {
-        rawImage = GetComponent<RawImage>();
-        CreateBoard();
-    }
-
-    public void CreateBoard() {
+    public void ClearBoard() {
         boardTexture = new Texture2D(spriteSize, spriteSize);
         for (int x = 0; x < spriteSize; x++) {
             for (int y = 0; y < spriteSize; y++) {
@@ -37,8 +33,6 @@ public class HatBoard : MonoBehaviour {
         boardTexture.Apply();
     }
 
-    public void SaveHat() {
-        byte[] bytes = boardTexture.EncodeToPNG();
-        Hat.SendHatToServer(bytes, this);
-    }
+    public void SaveHat() => HatNetworking.UploadHat(boardTexture.EncodeToPNG(), this);
+
 }

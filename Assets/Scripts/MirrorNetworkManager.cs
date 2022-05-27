@@ -4,9 +4,9 @@ using UnityEngine;
 using Mirror;
 using UnityEngine.SceneManagement;
 
-public class NetworkManagerHats : NetworkManager {
+public class MirrorNetworkManager : NetworkManager {
 
-    public GameObject menu;
+    [SerializeField] GameObject menu;
 
     public override void OnClientConnect() {
         base.OnClientConnect();

@@ -3,25 +3,24 @@ using UnityEngine.Events;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-public class ColorPaletteController : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IInitializePotentialDragHandler {
+public class ColorPicker : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IInitializePotentialDragHandler {
+
     [SerializeField] RectTransform picker;
     [SerializeField] Image pickedColorImage;
     [SerializeField] Material colorWheelMat;
     [SerializeField] int totalNumberofColors = 24;
     [SerializeField] int wheelsCount = 2;
-    [SerializeField]
-    [Range(0, 360)]
-    [Tooltip("clockwise angle of the begnning point starting from positive x-axis")]
-    float startingAngle = 0;
-    [SerializeField][InspectorName("Control Sat & Val")] bool controlSV = false;
+
+    [SerializeField][Range(0, 360)] float startingAngle = 0;
+    [SerializeField] bool controlSV = false;
     [SerializeField] bool inertia = true;
     [SerializeField] float decelerationRate = 0.135f;
     [SerializeField] bool wholeSegment = false;
 
-    [Header("Limits")]
     [SerializeField][Range(0.5f, 0.001f)] float minimumSatValStep = 0.01f;
     [SerializeField][Range(0, 1)] float minimumSaturation = 0.25f;
     [SerializeField][Range(0, 1)] float maximumSaturation = 1;
+
     float minimumValue = 0;
     float maximumValue = 2;
 
@@ -34,6 +33,44 @@ public class ColorPaletteController : MonoBehaviour, IBeginDragHandler, IDragHan
     float previousDiscretedH;
     float sat = 1, val = 1;
     Color selectedColor;
+
+    public ColorChangeEvent OnColorChange;
+    public HueChangeEvent OnHueChange;
+
+    Vector2 centerPoint;
+    float paletteRadius;
+    float pickerHueOffset;
+
+    void Awake() {
+        CalculatePresets();
+        UpdateMaterialInitialValues();
+        UpdateMaterial();
+        UpdateColor();
+    }
+
+    void Update() {
+        float deltaTime = Time.unscaledDeltaTime;
+        if (dragging && inertia) {
+            float newOmega = (theta - previousTheta) / Time.deltaTime;
+            omega = Mathf.Lerp(omega, newOmega, deltaTime * 10);
+            previousTheta = theta;
+        }
+        if (!dragging && omega != 0) {
+            omega *= Mathf.Pow(decelerationRate, deltaTime);
+            if (Mathf.Abs(omega) < 1)
+                omega = 0;
+            float dtheta = omega * deltaTime;
+            Hue += dtheta / 360;
+            if (Hue < 0) Hue += wheelsCount;
+            UpdateHue();
+        }
+        if (Input.GetAxis("Mouse ScrollWheel") != 0) {
+            satValAmount += Input.GetAxis("Mouse ScrollWheel");
+            satValAmount = Mathf.Clamp(satValAmount, 0, 2);
+            CalculateSaturationAndValue(satValAmount);
+        }
+    }
+
     public Color SelectedColor {
         get {
             return selectedColor;
@@ -45,7 +82,9 @@ public class ColorPaletteController : MonoBehaviour, IBeginDragHandler, IDragHan
             }
         }
     }
+
     public float Hue { get; private set; } = 0;
+
     public float Value {
         get { return val; }
         set {
@@ -57,6 +96,7 @@ public class ColorPaletteController : MonoBehaviour, IBeginDragHandler, IDragHan
             }
         }
     }
+
     public float Saturation {
         get { return sat; }
         set {
@@ -68,25 +108,13 @@ public class ColorPaletteController : MonoBehaviour, IBeginDragHandler, IDragHan
             }
         }
     }
-    public ColorChangeEvent OnColorChange;
-    public HueChangeEvent OnHueChange;
 
-    void Awake() {
-        CalculatePresets();
-        UpdateMaterialInitialValues();
-        UpdateMaterial();
-        UpdateColor();
-    }
     void UpdateMaterialInitialValues() {
         colorWheelMat.SetFloat("_StartingAngle", startingAngle);
         colorWheelMat.SetInt("_ColorsCount", totalNumberofColors);
         colorWheelMat.SetInt("_WheelsCount", wheelsCount);
 
     }
-
-    Vector2 centerPoint;
-    float paletteRadius;
-    float pickerHueOffset;
 
     void CalculatePresets() {
         centerPoint = RectTransformUtility.WorldToScreenPoint(null, transform.position);
@@ -99,8 +127,7 @@ public class ColorPaletteController : MonoBehaviour, IBeginDragHandler, IDragHan
 
     }
 
-    public void CalculateSaturationAndValue(float amount) {
-
+    void CalculateSaturationAndValue(float amount) {
         if (amount > 1 && amount < 2) {
             val = 1;
             sat = 2 - amount;
@@ -116,11 +143,13 @@ public class ColorPaletteController : MonoBehaviour, IBeginDragHandler, IDragHan
         UpdateMaterial();
         UpdateColor();
     }
-    public void UpdateHue() {
+
+    void UpdateHue() {
         UpdateMaterial();
         UpdateColor();
     }
-    public void UpdateMaterial() {
+
+    void UpdateMaterial() {
         if (wholeSegment) {
             float discretedHue = ((int)((Hue + startingAngle / 360.0f) * totalNumberofColors)) / (1.0f * (totalNumberofColors));
             colorWheelMat.SetFloat("_Hue", discretedHue);
@@ -133,7 +162,8 @@ public class ColorPaletteController : MonoBehaviour, IBeginDragHandler, IDragHan
         }
 
     }
-    public void UpdateColor() {
+
+    void UpdateColor() {
 
         float shiftedH = (pickerHueOffset + startingAngle / 360.0f + Hue % wheelsCount) / wheelsCount;
         shiftedH = shiftedH % 1.0f;
@@ -146,6 +176,7 @@ public class ColorPaletteController : MonoBehaviour, IBeginDragHandler, IDragHan
         SelectedColor = color;
         previousDiscretedH = discretedH;
     }
+
     public void OnDrag(PointerEventData eventData) {
         if (!dragging)
             return;
@@ -157,7 +188,6 @@ public class ColorPaletteController : MonoBehaviour, IBeginDragHandler, IDragHan
         Vector2 currentPos = eventData.position;
         Vector2 prevPos = currentPos - dragVec;
 
-        //calculate Hue change
         float dtheta = Vector2.SignedAngle(currentPos - centerPoint, prevPos - centerPoint);
         theta += dtheta;
 
@@ -183,29 +213,8 @@ public class ColorPaletteController : MonoBehaviour, IBeginDragHandler, IDragHan
             return;
         dragging = false;
     }
-    public void Update() {
-        float deltaTime = Time.unscaledDeltaTime;
-        if (dragging && inertia) {
-            float newOmega = (theta - previousTheta) / Time.deltaTime;
-            omega = Mathf.Lerp(omega, newOmega, deltaTime * 10);
-            previousTheta = theta;
-        }
-        if (!dragging && omega != 0) {
-            omega *= Mathf.Pow(decelerationRate, deltaTime);
-            if (Mathf.Abs(omega) < 1)
-                omega = 0;
-            float dtheta = omega * deltaTime;
-            Hue += dtheta / 360;
-            if (Hue < 0) Hue += wheelsCount;
-            UpdateHue();
-        }
-        if (Input.GetAxis("Mouse ScrollWheel") != 0) {
-            satValAmount += Input.GetAxis("Mouse ScrollWheel");
-            satValAmount = Mathf.Clamp(satValAmount, 0, 2);
-            CalculateSaturationAndValue(satValAmount);
-        }
-    }
 }
+
 [System.Serializable]
 public class ColorChangeEvent : UnityEvent<Color> { }
 [System.Serializable]
